@@ -117,7 +117,7 @@ fn handle_event<A: ToSocketAddrs>(
                     }
                 }
                 _ => {
-                    let output = if let Some((server_id, channel_id)) = voice_channel {
+                    if let Some((server_id, channel_id)) = voice_channel {
                         let voice = connection.voice(server_id);
                         voice.set_deaf(true);
                         voice.connect(channel_id);
@@ -125,12 +125,11 @@ fn handle_event<A: ToSocketAddrs>(
                             true,
                             File::open("/tmp/mpd_bot.fifo").unwrap(),
                         ));
-                        String::new()
                     } else {
-                        "You must be in a voice channel to invate Rusty Webradio".to_string()
-                    };
-                    if !output.is_empty() {
-                        send_message(message.channel_id, &output);
+                        send_message(
+                            message.channel_id,
+                            "You must be in a voice channel to invite me.",
+                        );
                     }
                 }
             }

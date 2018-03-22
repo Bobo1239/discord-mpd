@@ -119,6 +119,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "discord-mpd"
+version = "0.1.0"
+dependencies = [
+ "byteorder 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "discord 0.8.0 (git+https://github.com/SpaceManiac/discord-rs.git)",
+ "dotenv 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mpd 0.0.12 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "dotenv"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -602,16 +612,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "rustc-serialize"
 version = "0.3.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "rusty-webradio"
-version = "0.1.0"
-dependencies = [
- "byteorder 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "discord 0.8.0 (git+https://github.com/SpaceManiac/discord-rs.git)",
- "dotenv 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mpd 0.0.12 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "same-file"
