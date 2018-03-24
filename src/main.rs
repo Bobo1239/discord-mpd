@@ -224,16 +224,29 @@ fn handle_event<A: ToSocketAddrs>(
 }
 
 fn format_mpd_singinfo(song: &Song) -> String {
-    let mut info = "```\n".to_string();
-    info += &format!(
-        "Title: {}\n",
-        if let Some(ref title) = song.title {
-            title
-        } else {
-            &song.file
+    fn add_romanization(mut input: String) -> String {
+        let romanized = romanize(&input);
+        if romanized != input {
+            input.push_str(&format!(" ({})", romanized));
         }
-    );
-    if let Some(album) = song.tags.get("Album") {
+        input
+    }
+
+    let mut info = "```\n".to_string();
+
+    let title = if let Some(ref title) = song.title {
+        add_romanization(title.clone())
+    } else {
+        song.file.clone()
+    };
+    let artist = song.tags.get("Artist").map(|s| add_romanization(s.clone()));
+    let album = song.tags.get("Album").map(|s| add_romanization(s.clone()));
+
+    info += &format!("Title: {}\n", title,);
+    if let Some(artist) = artist {
+        info += &format!("Artist: {}\n", artist)
+    }
+    if let Some(album) = album {
         info += &format!("Album: {}\n", album)
     }
     if let Some(duration) = song.duration {
@@ -242,6 +255,7 @@ fn format_mpd_singinfo(song: &Song) -> String {
             format_duration(&duration.to_std().unwrap())
         );
     }
+
     info += "```";
     info
 }
