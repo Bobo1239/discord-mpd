@@ -2,6 +2,10 @@ extern crate byteorder;
 extern crate discord;
 extern crate dotenv;
 extern crate mpd;
+extern crate rocket;
+#[macro_use]
+extern crate log;
+extern crate env_logger;
 
 mod mpd_client;
 
@@ -21,38 +25,44 @@ use mpd::Song;
 const COMMAND: &str = "!r";
 
 fn main() {
+    env_logger::Builder::new()
+        .filter(Some(module_path!()), log::LevelFilter::max())
+        .init();
+
     dotenv().ok();
     let token = &env::var("DISCORD_TOKEN")
         .expect("DISCORD_TOKEN not set! Did you forget to create a .env file?");
+    let mpd_url = &env::var("MPD_URL").unwrap_or("localhost:6600".to_string());
 
     let discord = Discord::from_bot_token(token).expect("login failed");
 
     let (mut connection, ready) = discord.connect().expect("connect failed");
-    println!(
-        "[Ready] \"{}\" is serving {} servers",
+    info!(
+        "\"{}\" is serving {} servers",
         ready.user.username,
         ready.servers.len()
     );
     let mut state = State::new(ready);
     connection.sync_calls(&state.all_private_channels());
 
-    let mut mpd = MpdClient::connect("127.0.0.1:6600").unwrap();
+    let mut mpd = MpdClient::connect(mpd_url).unwrap();
 
     loop {
         let event = match connection.recv_event() {
             Ok(event) => event,
             Err(err) => {
-                println!("[WARN] Received error: {:?}", err);
+                warn!("Received error: {:?}", err);
                 match err {
                     discord::Error::WebSocket(..) => {
                         // Handle the websocket connection being dropped
                         let (new_connection, ready) = discord.connect().expect("connect failed");
                         connection = new_connection;
                         state = State::new(ready);
-                        println!("[INFO] Reconnected successfully.");
+                        info!("Discord reconnected successfully.");
                     }
                     discord::Error::Closed(..) => {
-                        println!("[WARN] Connection closed!");
+                        warn!("Discord connection closed!");
+                        return;
                     }
                     _ => {}
                 }
@@ -63,6 +73,7 @@ fn main() {
         handle_event(event, &state, &mut connection, &discord, &mut mpd);
     }
 }
+
 fn handle_event<A: ToSocketAddrs>(
     event: Event,
     state: &State,
