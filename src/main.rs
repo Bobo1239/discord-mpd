@@ -1,3 +1,6 @@
+#![feature(plugin)]
+#![plugin(rocket_codegen)]
+
 extern crate byteorder;
 extern crate discord;
 extern crate dotenv;
@@ -24,6 +27,15 @@ use mpd::Song;
 
 const COMMAND: &str = "!r";
 
+#[get("/")]
+fn index() -> &'static str {
+    "Hello, world!"
+}
+
+fn launch_rocket() {
+    rocket::ignite().mount("/", routes![index]).launch();
+}
+
 fn main() {
     env_logger::Builder::new()
         .filter(Some(module_path!()), log::LevelFilter::max())
@@ -33,6 +45,10 @@ fn main() {
     let token = &env::var("DISCORD_TOKEN")
         .expect("DISCORD_TOKEN not set! Did you forget to create a .env file?");
     let mpd_url = &env::var("MPD_URL").unwrap_or("localhost:6600".to_string());
+
+    let mut mpd = MpdClient::connect(mpd_url).unwrap();
+
+    launch_rocket();
 
     let discord = Discord::from_bot_token(token).expect("login failed");
 
@@ -44,8 +60,6 @@ fn main() {
     );
     let mut state = State::new(ready);
     connection.sync_calls(&state.all_private_channels());
-
-    let mut mpd = MpdClient::connect(mpd_url).unwrap();
 
     loop {
         let event = match connection.recv_event() {
