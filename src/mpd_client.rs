@@ -1,9 +1,9 @@
 use std::net::ToSocketAddrs;
 
-use mpd::{Client, Song};
 use mpd::error::Error;
+use mpd::{Client, Song};
 
-pub struct MpdClient<A: ToSocketAddrs>(Client, A);
+pub struct MpdClient<A: ToSocketAddrs = String>(Client, A);
 
 impl<A: ToSocketAddrs> MpdClient<A> {
     pub fn connect(address: A) -> Result<MpdClient<A>, Error> {
@@ -11,7 +11,7 @@ impl<A: ToSocketAddrs> MpdClient<A> {
     }
 
     fn do_op<T, F: Fn(&mut Client) -> Result<T, Error>>(&mut self, f: F) -> Result<T, Error> {
-        if self.0.status().is_err() || self.0.status().is_err() {
+        if self.0.ping().is_err() || self.0.ping().is_err() {
             self.0 = Client::connect(&self.1).unwrap();
         }
         f(&mut self.0)
@@ -31,5 +31,9 @@ impl<A: ToSocketAddrs> MpdClient<A> {
 
     pub fn currentsong(&mut self) -> Result<Option<Song>, Error> {
         self.do_op(Client::currentsong)
+    }
+
+    pub fn queue(&mut self) -> Result<Vec<Song>, Error> {
+        self.do_op(Client::queue)
     }
 }

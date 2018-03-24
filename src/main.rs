@@ -9,31 +9,66 @@ extern crate rocket;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
+extern crate failure;
+#[macro_use]
+extern crate itertools;
+extern crate bytecount;
 
+mod helper;
 mod mpd_client;
 
+use helper::*;
 use mpd_client::MpdClient;
 
-use std::net::ToSocketAddrs;
-use std::fs::File;
 use std::env;
-use std::time::Duration;
+use std::fs::File;
+use std::net::ToSocketAddrs;
+use std::sync::Mutex;
 
-use discord::{Connection, Discord, State};
 use discord::model::{ChannelId, Event};
 use discord::voice::create_pcm_source;
+use discord::{Connection, Discord, State};
 use dotenv::dotenv;
+use failure::Error;
 use mpd::Song;
+
+// TODO: error handling...
 
 const COMMAND: &str = "!r";
 
 #[get("/")]
-fn index() -> &'static str {
-    "Hello, world!"
+fn index(mpd: rocket::State<Mutex<MpdClient>>) -> String {
+    let songs = mpd.lock().unwrap().queue().unwrap();
+
+    let titles: Vec<_> = songs
+        .iter()
+        .map(|s| {
+            s.title
+                .as_ref()
+                .map(|s| s.clone())
+                .unwrap_or("[missing title]".to_string())
+        })
+        .collect();
+    let romanized_titles = romanize(&titles.join("\n"));
+    let romanized_titles: Vec<_> = romanized_titles.split("\n").collect();
+
+    assert_eq!(songs.len(), titles.len());
+    assert_eq!(songs.len(), romanized_titles.len());
+    let mut output = String::new();
+    for (song, title, romanized) in izip!(songs, titles, romanized_titles) {
+        output += &format!("{} {}   |  {}\n", song.place.unwrap().id, title, romanized,);
+    }
+    output
 }
 
-fn launch_rocket() {
-    rocket::ignite().mount("/", routes![index]).launch();
+fn launch_rocket(mpd_url: &str) {
+    let mpd_url = mpd_url.to_string();
+    std::thread::spawn(|| {
+        rocket::ignite()
+            .manage(Mutex::new(MpdClient::connect(mpd_url).unwrap()))
+            .mount("/", routes![index])
+            .launch();
+    });
 }
 
 fn main() {
@@ -48,7 +83,7 @@ fn main() {
 
     let mut mpd = MpdClient::connect(mpd_url).unwrap();
 
-    launch_rocket();
+    launch_rocket(mpd_url);
 
     let discord = Discord::from_bot_token(token).expect("login failed");
 
@@ -94,7 +129,7 @@ fn handle_event<A: ToSocketAddrs>(
     connection: &mut Connection,
     discord: &Discord,
     mpd: &mut MpdClient<A>,
-) -> Option<discord::Error> {
+) -> Option<Error> {
     let send_message = |channel: ChannelId, message: &str| {
         return discord.send_message(channel, message, "", false).err();
     };
@@ -209,36 +244,4 @@ fn format_mpd_singinfo(song: &Song) -> String {
     }
     info += "```";
     info
-}
-
-fn format_duration(duration: &Duration) -> String {
-    let hours = duration.as_secs() / (60 * 60);
-    let minutes = (duration.as_secs() - hours * 60 * 60) / 60;
-    let seconds = duration.as_secs() - hours * 60 * 60 - minutes * 60;
-    if hours > 0 {
-        format!("{}:{:02}:{:02}", hours, minutes, seconds)
-    } else {
-        format!("{}:{:02}", minutes, seconds)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::time::Duration;
-    #[test]
-    fn format_duration() {
-        use super::format_duration;
-        assert_eq!("0:00", format_duration(&Duration::from_secs(0)));
-        assert_eq!("0:10", format_duration(&Duration::from_secs(10)));
-        assert_eq!("0:59", format_duration(&Duration::from_secs(59)));
-        assert_eq!("1:00", format_duration(&Duration::from_secs(60)));
-        assert_eq!("1:10", format_duration(&Duration::from_secs(70)));
-        assert_eq!("10:42", format_duration(&Duration::from_secs(10 * 60 + 42)));
-        assert_eq!("59:59", format_duration(&Duration::from_secs(59 * 60 + 59)));
-        assert_eq!("1:00:00", format_duration(&Duration::from_secs(3600)));
-        assert_eq!(
-            "42:42:42",
-            format_duration(&Duration::from_secs(42 * 3600 + 42 * 60 + 42))
-        );
-    }
 }
