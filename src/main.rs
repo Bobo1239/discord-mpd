@@ -13,6 +13,7 @@ extern crate failure;
 #[macro_use]
 extern crate itertools;
 extern crate bytecount;
+extern crate unicode_normalization;
 
 mod helper;
 mod mpd_client;

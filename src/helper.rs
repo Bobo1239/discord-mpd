@@ -3,6 +3,7 @@ use std::process::{Command, Stdio};
 use std::time::Duration;
 
 use bytecount;
+use unicode_normalization::UnicodeNormalization;
 
 pub fn romanize(input: &str) -> String {
     let process = Command::new("kakasi")
@@ -42,8 +43,11 @@ pub fn romanize(input: &str) -> String {
         );
         romanize(input)
     } else {
-        // TODO: replace ^ (enlongation; -) with the correct character depending on the previous character
-        string.trim().replace("(kigou)", "~")
+        string
+        .trim()
+        .replace("(kigou)", "~")
+            .replace('^', "\u{0304}") // \u{0304} = combining macron character (e.g. ō)
+            .nfc().collect()
     }
 }
 
@@ -86,6 +90,9 @@ mod tests {
             "U&I ~ Yuuhi no Kirei naano Oka de ~ U&I",
             romanize("U&I ～夕日の綺麗なあの丘で～ U&I")
         );
-        // assert_eq!("fude pen ~ bourupen ~ [GAME Mix]", romanize("ふでペン ～ボールペン～ [GAME Mix]"));
+        assert_eq!(
+            "fude pen ~ bōrupen ~ [GAME Mix]",
+            romanize("ふでペン ～ボールペン～ [GAME Mix]")
+        );
     }
 }
