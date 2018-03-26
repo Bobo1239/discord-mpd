@@ -44,10 +44,11 @@ pub fn romanize(input: &str) -> String {
         romanize(input)
     } else {
         string
-        .trim()
-        .replace("(kigou)", "~")
+            .trim()
+            .replace("(kigou)", "~")
             .replace('^', "\u{0304}") // \u{0304} = combining macron character (e.g. ō)
-            .nfc().collect()
+            .nfc() // Normalize unicode
+            .collect()
     }
 }
 
