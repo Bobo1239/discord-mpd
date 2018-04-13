@@ -8,7 +8,6 @@ extern crate mpd;
 extern crate rocket;
 #[macro_use]
 extern crate log;
-extern crate env_logger;
 extern crate failure;
 #[macro_use]
 extern crate itertools;
@@ -62,21 +61,24 @@ fn index(mpd: rocket::State<Mutex<MpdClient>>) -> String {
     output
 }
 
+#[get("/next")]
+fn next(mpd: rocket::State<Mutex<MpdClient>>) -> &str {
+    let mut mpd = mpd.lock().unwrap();
+    mpd.next().unwrap();
+    "Skipped"
+}
+
 fn launch_rocket(mpd_url: &str) {
     let mpd_url = mpd_url.to_string();
     std::thread::spawn(|| {
         rocket::ignite()
             .manage(Mutex::new(MpdClient::connect(mpd_url).unwrap()))
-            .mount("/", routes![index])
+            .mount("/", routes![index, next])
             .launch();
     });
 }
 
 fn main() {
-    env_logger::Builder::new()
-        .filter(Some(module_path!()), log::LevelFilter::max())
-        .init();
-
     dotenv().ok();
     let token = &env::var("DISCORD_TOKEN")
         .expect("DISCORD_TOKEN not set! Did you forget to create a .env file?");
