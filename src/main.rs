@@ -1,7 +1,6 @@
 #![feature(plugin)]
 #![plugin(rocket_codegen)]
 
-extern crate byteorder;
 extern crate discord;
 extern crate dotenv;
 extern crate mpd;
@@ -11,8 +10,7 @@ extern crate log;
 extern crate failure;
 #[macro_use]
 extern crate itertools;
-extern crate bytecount;
-extern crate unicode_normalization;
+extern crate romaji;
 
 mod helper;
 mod mpd_client;
@@ -31,13 +29,14 @@ use discord::{Connection, Discord, State};
 use dotenv::dotenv;
 use failure::Error;
 use mpd::Song;
+use romaji::Romaji;
 
 // TODO: error handling...
 
 const COMMAND: &str = "!r";
 
 #[get("/")]
-fn index(mpd: rocket::State<Mutex<MpdClient>>) -> String {
+fn index(mpd: rocket::State<Mutex<MpdClient>>, romaji: rocket::State<Romaji>) -> String {
     let songs = mpd.lock().unwrap().queue().unwrap();
 
     let titles: Vec<_> = songs
@@ -47,9 +46,8 @@ fn index(mpd: rocket::State<Mutex<MpdClient>>) -> String {
                 .as_ref()
                 .map(|s| s.clone())
                 .unwrap_or("[missing title]".to_string())
-        })
-        .collect();
-    let romanized_titles = romanize(&titles.join("\n"));
+        }).collect();
+    let romanized_titles = romaji.romanize(&titles.join("\n"));
     let romanized_titles: Vec<_> = romanized_titles.split("\n").collect();
 
     assert_eq!(songs.len(), titles.len());
@@ -73,6 +71,7 @@ fn launch_rocket(mpd_url: &str) {
     std::thread::spawn(|| {
         rocket::ignite()
             .manage(Mutex::new(MpdClient::connect(mpd_url).unwrap()))
+            .manage(Romaji::new().unwrap())
             .mount("/", routes![index, next])
             .launch();
     });
@@ -89,6 +88,7 @@ fn main() {
     launch_rocket(mpd_url);
 
     let discord = Discord::from_bot_token(token).expect("login failed");
+    let romaji = Romaji::new().unwrap();
 
     let (mut connection, ready) = discord.connect().expect("connect failed");
     info!(
@@ -122,7 +122,7 @@ fn main() {
             }
         };
         state.update(&event);
-        handle_event(event, &state, &mut connection, &discord, &mut mpd);
+        handle_event(event, &state, &mut connection, &discord, &mut mpd, &romaji);
     }
 }
 
@@ -132,6 +132,7 @@ fn handle_event<A: ToSocketAddrs>(
     connection: &mut Connection,
     discord: &Discord,
     mpd: &mut MpdClient<A>,
+    romaji: &Romaji,
 ) -> Option<Error> {
     let send_message = |channel: ChannelId, message: &str| {
         return discord.send_message(channel, message, "", false).err();
@@ -174,7 +175,7 @@ fn handle_event<A: ToSocketAddrs>(
                 }
                 "info" => {
                     if let Some(song) = mpd.currentsong().unwrap() {
-                        send_message(message.channel_id, &format_mpd_singinfo(&song));
+                        send_message(message.channel_id, &format_mpd_singinfo(&song, romaji));
                     } else {
                         send_message(message.channel_id, "No song currently playing!");
                     }
@@ -204,10 +205,12 @@ fn handle_event<A: ToSocketAddrs>(
                 match server_id {
                     Some(server_id) => {
                         if let Some(srv) = state.servers().iter().find(|srv| srv.id == server_id) {
-                            if srv.voice_states
+                            if srv
+                                .voice_states
                                 .iter()
                                 .filter(|vs| vs.channel_id == Some(cur_channel))
-                                .count() <= 1
+                                .count()
+                                <= 1
                             {
                                 connection.voice(Some(server_id)).disconnect();
                             }
@@ -226,9 +229,9 @@ fn handle_event<A: ToSocketAddrs>(
     None
 }
 
-fn format_mpd_singinfo(song: &Song) -> String {
-    fn add_romanization(mut input: String) -> String {
-        let romanized = romanize(&input);
+fn format_mpd_singinfo(song: &Song, romaji: &Romaji) -> String {
+    fn add_romanization(mut input: String, romaji: &Romaji) -> String {
+        let romanized = romaji.romanize(&input);
         if romanized != input {
             input.push_str(&format!(" ({})", romanized));
         }
@@ -238,12 +241,18 @@ fn format_mpd_singinfo(song: &Song) -> String {
     let mut info = "```\n".to_string();
 
     let title = if let Some(ref title) = song.title {
-        add_romanization(title.clone())
+        add_romanization(title.clone(), romaji)
     } else {
         song.file.clone()
     };
-    let artist = song.tags.get("Artist").map(|s| add_romanization(s.clone()));
-    let album = song.tags.get("Album").map(|s| add_romanization(s.clone()));
+    let artist = song
+        .tags
+        .get("Artist")
+        .map(|s| add_romanization(s.clone(), romaji));
+    let album = song
+        .tags
+        .get("Album")
+        .map(|s| add_romanization(s.clone(), romaji));
 
     info += &format!("Title:    {}\n", title,);
     if let Some(artist) = artist {
