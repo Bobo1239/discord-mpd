@@ -7,7 +7,7 @@ authors = ["Boris-Chengbiao Zhou <bobo1239@web.de>"]
 discord = { git = "https://github.com/io12/discord-rs.git" }
 byteorder = "1.2.1"
 mpd = "0.0.12"
-dotenv = "0.11.0"
+dotenv = "0.13.0"
 rocket = "0.3.6"
 env_logger = "0.5.6"
 log = "0.4.1"
