@@ -14,6 +14,7 @@ pub fn format_duration(duration: &Duration) -> String {
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
+
     #[test]
     fn format_duration() {
         use super::format_duration;
@@ -28,20 +29,6 @@ mod tests {
         assert_eq!(
             "42:42:42",
             format_duration(&Duration::from_secs(42 * 3600 + 42 * 60 + 42))
-        );
-    }
-
-    #[test]
-    fn romanize() {
-        use super::romanize;
-        assert_eq!("Taiyou no Kiss", romanize("太陽のKiss"));
-        assert_eq!(
-            "U&I ~ Yuuhi no Kirei naano Oka de ~ U&I",
-            romanize("U&I ～夕日の綺麗なあの丘で～ U&I")
-        );
-        assert_eq!(
-            "fude pen ~ bōrupen ~ [GAME Mix]",
-            romanize("ふでペン ～ボールペン～ [GAME Mix]")
         );
     }
 }

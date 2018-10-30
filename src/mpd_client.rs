@@ -1,12 +1,12 @@
-use std::net::ToSocketAddrs;
+use std::net::SocketAddr;
 
 use mpd::error::Error;
 use mpd::{Client, Song};
 
-pub struct MpdClient<A: ToSocketAddrs = String>(Client, A);
+pub struct MpdClient(Client, SocketAddr);
 
-impl<A: ToSocketAddrs> MpdClient<A> {
-    pub fn connect(address: A) -> Result<MpdClient<A>, Error> {
+impl MpdClient {
+    pub fn connect(address: SocketAddr) -> Result<MpdClient, Error> {
         Ok(MpdClient(Client::connect(&address)?, address))
     }
 

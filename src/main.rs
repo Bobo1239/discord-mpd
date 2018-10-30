@@ -1,26 +1,12 @@
 #![feature(plugin)]
 #![plugin(rocket_codegen)]
 
-extern crate discord;
-extern crate dotenv;
-extern crate mpd;
-extern crate rocket;
-#[macro_use]
-extern crate log;
-extern crate failure;
-#[macro_use]
-extern crate itertools;
-extern crate romanize;
-
 mod helper;
 mod mpd_client;
 
-use helper::*;
-use mpd_client::MpdClient;
-
 use std::env;
 use std::fs::File;
-use std::net::ToSocketAddrs;
+use std::net::SocketAddr;
 use std::sync::Mutex;
 
 use discord::model::{ChannelId, Event};
@@ -28,14 +14,20 @@ use discord::voice::create_pcm_source;
 use discord::{Connection, Discord, State};
 use dotenv::dotenv;
 use failure::Error;
+use itertools::izip;
+use log::*;
 use mpd::Song;
 use romanize::Romanizer;
+
+use crate::helper::*;
+use crate::mpd_client::MpdClient;
 
 // TODO: error handling...
 
 const COMMAND: &str = "!r";
 
 #[get("/")]
+#[allow(clippy::needless_pass_by_value)]
 fn index(mpd: rocket::State<Mutex<MpdClient>>, romanizer: rocket::State<Romanizer>) -> String {
     let songs = mpd.lock().unwrap().queue().unwrap();
 
@@ -44,11 +36,12 @@ fn index(mpd: rocket::State<Mutex<MpdClient>>, romanizer: rocket::State<Romanize
         .map(|s| {
             s.title
                 .as_ref()
-                .map(|s| s.clone())
-                .unwrap_or("[missing title]".to_string())
-        }).collect();
+                .cloned()
+                .unwrap_or_else(|| "[missing title]".to_string())
+        })
+        .collect();
     let romanized_titles = romanizer.romanize(&titles.join("\n"));
-    let romanized_titles: Vec<_> = romanized_titles.split("\n").collect();
+    let romanized_titles: Vec<_> = romanized_titles.split('\n').collect();
 
     assert_eq!(songs.len(), titles.len());
     assert_eq!(songs.len(), romanized_titles.len());
@@ -60,17 +53,17 @@ fn index(mpd: rocket::State<Mutex<MpdClient>>, romanizer: rocket::State<Romanize
 }
 
 #[get("/next")]
+#[allow(clippy::needless_pass_by_value)]
 fn next(mpd: rocket::State<Mutex<MpdClient>>) -> &str {
     let mut mpd = mpd.lock().unwrap();
     mpd.next().unwrap();
     "Skipped"
 }
 
-fn launch_rocket(mpd_url: &str) {
-    let mpd_url = mpd_url.to_string();
-    std::thread::spawn(|| {
+fn launch_rocket(mpd_address: SocketAddr) {
+    std::thread::spawn(move || {
         rocket::ignite()
-            .manage(Mutex::new(MpdClient::connect(mpd_url).unwrap()))
+            .manage(Mutex::new(MpdClient::connect(mpd_address).unwrap()))
             .manage(Romanizer::new().unwrap())
             .mount("/", routes![index, next])
             .launch();
@@ -81,11 +74,14 @@ fn main() {
     dotenv().ok();
     let token = &env::var("DISCORD_TOKEN")
         .expect("DISCORD_TOKEN not set! Did you forget to create a .env file?");
-    let mpd_url = &env::var("MPD_URL").unwrap_or("localhost:6600".to_string());
+    let mpd_address = env::var("MPD_ADDRESS")
+        .unwrap_or_else(|_| "127.0.0.1:6600".to_string())
+        .parse()
+        .expect("Failed to parse mpd address!");
 
-    let mut mpd = MpdClient::connect(mpd_url).unwrap();
+    let mut mpd = MpdClient::connect(mpd_address).unwrap();
 
-    launch_rocket(mpd_url);
+    launch_rocket(mpd_address);
 
     let discord = Discord::from_bot_token(token).expect("login failed");
     let romanizer = Romanizer::new().unwrap();
@@ -123,7 +119,7 @@ fn main() {
         };
         state.update(&event);
         handle_event(
-            event,
+            &event,
             &state,
             &mut connection,
             &discord,
@@ -133,19 +129,18 @@ fn main() {
     }
 }
 
-fn handle_event<A: ToSocketAddrs>(
-    event: Event,
+fn handle_event(
+    event: &Event,
     state: &State,
     connection: &mut Connection,
     discord: &Discord,
-    mpd: &mut MpdClient<A>,
+    mpd: &mut MpdClient,
     romanizer: &Romanizer,
 ) -> Option<Error> {
-    let send_message = |channel: ChannelId, message: &str| {
-        return discord.send_message(channel, message, "", false).err();
-    };
+    let send_message =
+        |channel: ChannelId, message: &str| discord.send_message(channel, message, "", false).err();
 
-    match event {
+    match *event {
         Event::MessageCreate(ref message)
             if message.author.id != state.user().id && message.content.starts_with(COMMAND) =>
         {
@@ -178,7 +173,9 @@ fn handle_event<A: ToSocketAddrs>(
                 //     }
                 // }
                 "quit" => {
-                    voice_channel.map(|(sid, _)| connection.drop_voice(sid));
+                    if let Some((sid, _)) = voice_channel {
+                        connection.drop_voice(sid)
+                    }
                 }
                 "info" => {
                     if let Some(song) = mpd.currentsong().unwrap() {
@@ -223,11 +220,13 @@ fn handle_event<A: ToSocketAddrs>(
                             }
                         }
                     }
-                    None => if let Some(call) = state.calls().get(&cur_channel) {
-                        if call.voice_states.len() <= 1 {
-                            connection.voice(server_id).disconnect();
+                    None => {
+                        if let Some(call) = state.calls().get(&cur_channel) {
+                            if call.voice_states.len() <= 1 {
+                                connection.voice(server_id).disconnect();
+                            }
                         }
-                    },
+                    }
                 }
             }
         }
