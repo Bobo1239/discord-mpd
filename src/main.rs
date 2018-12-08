@@ -1,5 +1,7 @@
-#![feature(plugin)]
-#![plugin(rocket_codegen)]
+#![feature(proc_macro_hygiene, decl_macro)]
+
+#[macro_use]
+extern crate rocket;
 
 mod helper;
 mod mpd_client;
@@ -17,6 +19,7 @@ use failure::Error;
 use itertools::izip;
 use log::*;
 use mpd::Song;
+use rocket_contrib::serve::StaticFiles;
 use romanize::Romanizer;
 
 use crate::helper::*;
@@ -66,6 +69,7 @@ fn launch_rocket(mpd_address: SocketAddr) {
             .manage(Mutex::new(MpdClient::connect(mpd_address).unwrap()))
             .manage(Romanizer::new().unwrap())
             .mount("/", routes![index, next])
+            .mount("/", StaticFiles::from("static"))
             .launch();
     });
 }
