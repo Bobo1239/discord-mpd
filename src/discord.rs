@@ -118,12 +118,12 @@ impl EventHandler for Handler {
                             let reader = BufReader::new(fifo);
 
                             if manager.join(guild_id, channel_id).is_none() {
+                                Err("Error joining the channel".to_string())
+                            } else {
                                 manager
                                     .get_mut(guild_id)
                                     .unwrap()
                                     .play(voice::pcm(true, reader));
-                                Err("Error joining the channel".to_string())
-                            } else {
                                 Ok(())
                             }
                         });
