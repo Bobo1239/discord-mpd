@@ -13,5 +13,5 @@ log = "0.4.1"
 failure = "0.1.1"
 itertools = "0.7.8"
 romanize = { git = "https://github.com/Bobo1239/romanize.git" }
-serenity = { git = "https://github.com/serenity-rs/serenity.git", branch = "v0.6.x", features = ["voice"] }
+serenity = { version = "0.5.11", features = ["voice"] }
 typemap = "0.3.3"
