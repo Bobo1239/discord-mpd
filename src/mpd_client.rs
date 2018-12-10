@@ -29,7 +29,7 @@ impl MpdClient {
         self.do_op(Client::prev)
     }
 
-    pub fn currentsong(&mut self) -> Result<Option<Song>, Error> {
+    pub fn current_song(&mut self) -> Result<Option<Song>, Error> {
         self.do_op(Client::currentsong)
     }
 
