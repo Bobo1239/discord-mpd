@@ -1,3 +1,4 @@
 [production]
 address = "0.0.0.0"
 port = 9010
+log = "normal"

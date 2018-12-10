@@ -3,6 +3,7 @@ use std::io::BufReader;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use log::*;
 use mpd::Song;
 use romanize::Romanizer;
 use serenity::client::bridge::voice::ClientVoiceManager;
@@ -27,7 +28,7 @@ pub fn launch(mpd_address: &SocketAddr, discord_token: &str) {
         data.insert::<VoiceManager>(Arc::clone(&client.voice_manager));
     }
     if let Err(err) = client.start() {
-        println!("Client error: {:?}", err);
+        error!("[discord] client error: {:?}", err);
     }
 }
 
@@ -137,14 +138,14 @@ impl EventHandler for Handler {
             };
             if let Some(response) = response {
                 if let Err(err) = msg.channel_id.say(response) {
-                    println!("[discord] Error sending message: {:?}", err);
+                    error!("[discord] error sending message: {:?}", err);
                 }
             }
         }
     }
 
     fn ready(&self, _: Context, ready: Ready) {
-        println!("[discord] {} is connected!", ready.user.name);
+        info!("[discord] {} is connected!", ready.user.name);
     }
 }
 
