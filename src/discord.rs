@@ -115,7 +115,9 @@ impl EventHandler for Handler {
                             let manager_lock =
                                 ctx.data.lock().get::<VoiceManager>().cloned().unwrap();
                             let mut manager = manager_lock.lock();
-                            let fifo = File::open("/tmp/mpd_bot.fifo").unwrap(); // TODO
+                            // TODO: Make this configurable and also note that the sample
+                            //       rate should be 48kHz
+                            let fifo = File::open("/tmp/mpd_bot.fifo").unwrap();
                             let reader = BufReader::new(fifo);
 
                             if manager.join(guild_id, channel_id).is_none() {
