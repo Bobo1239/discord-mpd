@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 use std::sync::Mutex;
 
+use askama::Template;
 use itertools::izip;
 use rocket::State;
 use rocket_contrib::serve::StaticFiles;
@@ -12,13 +13,12 @@ pub fn launch(mpd_address: &SocketAddr) {
     rocket::ignite()
         .manage(Mutex::new(MpdClient::connect(*mpd_address).unwrap()))
         .manage(Romanizer::new().unwrap())
-        .mount("/", routes![index, next])
+        .mount("/", routes![index, next, test])
         .mount("/", StaticFiles::from("static"))
         .launch();
 }
 
 #[get("/")]
-#[allow(clippy::needless_pass_by_value)]
 fn index(mpd: State<Mutex<MpdClient>>, romanizer: State<Romanizer>) -> String {
     let songs = mpd.lock().unwrap().queue().unwrap();
 
@@ -44,9 +44,19 @@ fn index(mpd: State<Mutex<MpdClient>>, romanizer: State<Romanizer>) -> String {
 }
 
 #[get("/next")]
-#[allow(clippy::needless_pass_by_value)]
 fn next(mpd: State<Mutex<MpdClient>>) -> &str {
     let mut mpd = mpd.lock().unwrap();
     mpd.next().unwrap();
     "Skipped"
+}
+
+#[get("/test")]
+fn test() -> HelloTemplate<'static> {
+    HelloTemplate { name: "testing" }
+}
+
+#[derive(Template)]
+#[template(path = "hello.html")]
+struct HelloTemplate<'a> {
+    name: &'a str,
 }

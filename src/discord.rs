@@ -46,7 +46,7 @@ struct Handler {
 impl EventHandler for Handler {
     fn message(&self, ctx: Context, msg: Message) {
         if msg.content.starts_with(COMMAND_PREFIX) {
-            let arguments: Vec<&str> = msg.content.split(" ").collect();
+            let arguments: Vec<&str> = msg.content.split(' ').collect();
             if arguments.get(0) != Some(&COMMAND_PREFIX) {
                 return;
             }
@@ -77,7 +77,7 @@ impl EventHandler for Handler {
                 Some(&"quit") => {
                     let result = msg
                         .guild()
-                        .ok_or("Groups and DMs not supported".to_string())
+                        .ok_or_else(|| "Groups and DMs not supported".to_string())
                         .and_then(|guild| {
                             let guild = guild.read();
                             let manager_lock =
@@ -101,14 +101,14 @@ impl EventHandler for Handler {
                 None | Some(&"join") => {
                     let result = msg
                         .guild()
-                        .ok_or("Groups and DMs not supported".to_string())
+                        .ok_or_else(|| "Groups and DMs not supported".to_string())
                         .and_then(|guild| {
                             let guild = guild.read();
                             guild
                                 .voice_states
                                 .get(&msg.author.id)
                                 .and_then(|voice_state| voice_state.channel_id)
-                                .ok_or("Not in a voice channel".to_string())
+                                .ok_or_else(|| "Not in a voice channel".to_string())
                                 .map(|channel_id| (guild.id, channel_id))
                         })
                         .and_then(|(guild_id, channel_id)| {

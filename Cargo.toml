@@ -1,3 +1,5 @@
+cargo-features = ["profile-overrides"]
+
 [package]
 name = "discord-mpd"
 version = "0.1.0"
@@ -15,3 +17,12 @@ itertools = "0.7.8"
 romanize = { git = "https://github.com/Bobo1239/romanize.git" }
 serenity = { version = "0.5.11", features = ["voice"] }
 typemap = "0.3.3"
+askama = { git = "https://github.com/djc/askama.git", features = ["with-rocket"] }
+
+[build-dependencies]
+askama = { git = "https://github.com/djc/askama.git" }
+
+# Enable optimization of dependencies even when using a non-release build as
+# igo-rs (from romanize) overflows the stack otherwise.
+[profile.dev.overrides."*"]
+opt-level = 3
