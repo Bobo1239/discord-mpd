@@ -1,20 +1,25 @@
-use std::net::SocketAddr;
+#![feature(proc_macro_hygiene, decl_macro)]
+
+#[macro_use]
+extern crate rocket;
+
 use std::sync::Mutex;
 
 use askama::Template;
 use itertools::izip;
 use rocket::State;
 use rocket_contrib::serve::StaticFiles;
-use romanize::Romanizer;
 
-use crate::mpd_client::MpdClient;
+use shared::config::Config;
+use shared::mpd_client::MpdClient;
+use shared::romanize::Romanizer;
 
-pub fn launch(mpd_address: &SocketAddr) {
+pub fn launch(config: &Config) {
     rocket::ignite()
-        .manage(Mutex::new(MpdClient::connect(*mpd_address).unwrap()))
+        .manage(Mutex::new(MpdClient::connect(config.mpd_address).unwrap()))
         .manage(Romanizer::new().unwrap())
         .mount("/", routes![index, next, test])
-        .mount("/", StaticFiles::from("static"))
+        .mount("/", StaticFiles::from(concat!(env!("CARGO_MANIFEST_DIR"), "/static")))
         .launch();
 }
 

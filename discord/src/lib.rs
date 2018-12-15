@@ -1,28 +1,28 @@
 use std::fs::File;
 use std::io::BufReader;
-use std::net::SocketAddr;
 use std::sync::Arc;
 
-use log::*;
-use mpd::Song;
-use romanize::Romanizer;
 use serenity::client::bridge::voice::ClientVoiceManager;
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::voice;
 use typemap::Key;
 
-use crate::helper::*;
-use crate::mpd_client::MpdClient;
+use shared::config::Config;
+use shared::helper::*;
+use shared::log::*;
+use shared::mpd::Song;
+use shared::mpd_client::MpdClient;
+use shared::romanize::Romanizer;
 
 const COMMAND_PREFIX: &str = "!r";
 
-pub fn launch(mpd_address: &SocketAddr, discord_token: &str) {
+pub fn launch(config: &Config) {
     let handler = Handler {
-        mpd: Mutex::new(MpdClient::connect(*mpd_address).unwrap()),
+        mpd: Mutex::new(MpdClient::connect(config.mpd_address).unwrap()),
         romanizer: Romanizer::new().unwrap(),
     };
-    let mut client = Client::new(&discord_token, handler).unwrap();
+    let mut client = Client::new(&config.discord_token, handler).unwrap();
     {
         let mut data = client.data.lock();
         data.insert::<VoiceManager>(Arc::clone(&client.voice_manager));

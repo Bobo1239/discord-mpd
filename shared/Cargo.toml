@@ -1,0 +1,11 @@
+[package]
+name = "shared"
+version = "0.1.0"
+authors = ["Boris-Chengbiao Zhou <bobo1239@web.de>"]
+edition = "2018"
+
+[dependencies]
+log = "0.4.1"
+dotenv = "0.13.0"
+mpd = "0.0.12"
+romanize = { git = "https://github.com/Bobo1239/romanize.git" }

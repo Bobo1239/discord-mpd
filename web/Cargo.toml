@@ -1,0 +1,16 @@
+[package]
+name = "web"
+version = "0.1.0"
+authors = ["Boris-Chengbiao Zhou <bobo1239@web.de>"]
+edition = "2018"
+
+[dependencies]
+shared = { path = "../shared" }
+rocket = "0.4.0"
+rocket_contrib = "0.4.0"
+itertools = "0.7.8"
+# TODO: Use the normal release once ready
+askama = { git = "https://github.com/djc/askama.git", features = ["with-rocket"] }
+
+[build-dependencies]
+askama = { git = "https://github.com/djc/askama.git" }
