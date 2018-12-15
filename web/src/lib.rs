@@ -55,13 +55,13 @@ fn next(mpd: State<Mutex<MpdClient>>) -> &str {
     "Skipped"
 }
 
-#[get("/test")]
-fn test() -> HelloTemplate<'static> {
-    HelloTemplate { name: "testing" }
+#[get("/play")]
+fn test() -> PlayTemplate<'static> {
+    PlayTemplate { name: "testing" }
 }
 
 #[derive(Template)]
-#[template(path = "hello.html")]
-struct HelloTemplate<'a> {
+#[template(path = "index.html")]
+struct PlayTemplate<'a> {
     name: &'a str,
 }
