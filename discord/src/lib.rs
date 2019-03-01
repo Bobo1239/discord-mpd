@@ -6,7 +6,6 @@ use serenity::client::bridge::voice::ClientVoiceManager;
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::voice;
-use typemap::Key;
 
 use shared::config::Config;
 use shared::helper::*;
@@ -24,7 +23,7 @@ pub fn launch(config: &Config) {
     };
     let mut client = Client::new(&config.discord_token, handler).unwrap();
     {
-        let mut data = client.data.lock();
+        let mut data = client.data.write();
         data.insert::<VoiceManager>(Arc::clone(&client.voice_manager));
     }
     if let Err(err) = client.start() {
@@ -34,7 +33,7 @@ pub fn launch(config: &Config) {
 
 struct VoiceManager;
 
-impl Key for VoiceManager {
+impl TypeMapKey for VoiceManager {
     type Value = Arc<Mutex<ClientVoiceManager>>;
 }
 
@@ -76,12 +75,12 @@ impl EventHandler for Handler {
                 }),
                 Some(&"quit") => {
                     let result = msg
-                        .guild()
+                        .guild(&ctx.cache)
                         .ok_or_else(|| "Groups and DMs not supported".to_string())
                         .and_then(|guild| {
                             let guild = guild.read();
                             let manager_lock =
-                                ctx.data.lock().get::<VoiceManager>().cloned().unwrap();
+                                ctx.data.read().get::<VoiceManager>().cloned().unwrap();
                             let mut manager = manager_lock.lock();
 
                             match manager.get(guild.id) {
@@ -100,7 +99,7 @@ impl EventHandler for Handler {
                 }
                 None | Some(&"join") => {
                     let result = msg
-                        .guild()
+                        .guild(&ctx.cache)
                         .ok_or_else(|| "Groups and DMs not supported".to_string())
                         .and_then(|guild| {
                             let guild = guild.read();
@@ -113,7 +112,7 @@ impl EventHandler for Handler {
                         })
                         .and_then(|(guild_id, channel_id)| {
                             let manager_lock =
-                                ctx.data.lock().get::<VoiceManager>().cloned().unwrap();
+                                ctx.data.read().get::<VoiceManager>().cloned().unwrap();
                             let mut manager = manager_lock.lock();
                             // TODO: Make this configurable and also note that the sample
                             //       rate should be 48kHz
@@ -139,7 +138,7 @@ impl EventHandler for Handler {
                 _ => Some("Unrecognized command... TODO: reference".to_string()),
             };
             if let Some(response) = response {
-                if let Err(err) = msg.channel_id.say(response) {
+                if let Err(err) = msg.channel_id.say(&ctx.http, response) {
                     error!("[discord] error sending message: {:?}", err);
                 }
             }

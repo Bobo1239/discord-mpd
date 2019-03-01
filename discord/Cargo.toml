@@ -6,5 +6,4 @@ edition = "2018"
 
 [dependencies]
 shared = { path = "../shared" }
-serenity = { version = "0.5.11", features = ["voice"] }
-typemap = "0.3.3"
+serenity = { git = "https://github.com/serenity-rs/serenity", branch = "v0.6.x", features = ["voice"] }
