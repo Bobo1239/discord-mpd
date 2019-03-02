@@ -1,0 +1,20 @@
+.controls button {
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+}
+
+.controls button[data-state="pause"]:after {
+   content: '\f04c';
+}
+
+.controls button[data-state="play"]:after {
+   content: '\f04b';
+}
+
+.controls button[data-state="mute"]:after {
+   content: '\f028';
+}
+
+.controls button[data-state="unmute"]:after {
+   content: '\f6a9';
+}

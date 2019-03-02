@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Rusty Webradio</title>
+    <link rel="stylesheet" href="vendor/normalize.css">
+    <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <audio id="audio" src="https://radio.bobo1239.tk:9003/stream.ogg" preload="metadata">Your browser does not support the <code>audio</code> element.</audio>
+    <div id="audio-controls" class="controls">
+        <div class="playing">TODO</div>
+        <button id="playpause" type="button" data-state="play"></button>
+        <button id="mute" type="button" data-state="mute"></button>
+    </div>
+    <script type="text/javascript">
+    let audio = document.getElementById("audio");
+    let playing = document.getElementById("playing");
+    let playpause = document.getElementById("playpause");
+    let mute = document.getElementById("mute");
+
+    let changeButtonState = (type) => {
+        if (type == 'playpause') {
+            if (audio.paused) {
+                playpause.setAttribute('data-state', 'play');
+            } else {
+                playpause.setAttribute('data-state', 'pause');
+            }
+        } else if (type == 'mute') {
+            mute.setAttribute('data-state', audio.muted ? 'unmute' : 'mute');
+        }
+    }
+
+    audio.addEventListener('play', () => {
+        changeButtonState('playpause');
+    }, false);
+    audio.addEventListener('pause', () => {
+        changeButtonState('playpause');
+    }, false);
+    mute.addEventListener('click', () => {
+        audio.muted = !audio.muted;
+        changeButtonState('mute');
+    });
+
+    playpause.addEventListener('click', () => {
+        if (audio.paused) {
+            // TODO: Sometimes there's no seekable time range; Fix this
+            console.log(audio.seekable)
+            if (audio.seekable.length > 0) {
+                let lastIndex = audio.seekable.length - 1
+                audio.currentTime = audio.seekable.end(lastIndex) - 1
+            }
+            audio.play()
+        } else {
+            audio.pause()
+        }
+    })
+    </script>
+</body>
+
+</html>
