@@ -6,6 +6,16 @@
     <link rel="stylesheet" href="vendor/normalize.css">
 </head>
 <body>
-    TODO
+    <table>
+        {% for info in song_infos %}
+        <tr>
+            <td>{{ info.place }}</td>
+            <td>{{ info.title|escape }}</td>
+            <td>{{ info.title_romanized|escape }}</td>
+            <td>{{ info.album|escape }}</td>
+            <td>{{ info.album_romanized|escape }}</td>
+        </tr>
+        {% endfor %}
+    </table>
 </body>
 </html>
