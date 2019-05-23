@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 shared = { path = "../shared" }
-rocket = "0.4.0"
-rocket_contrib = "0.4.0"
+rocket = { git = "https://github.com/SergioBenitez/Rocket.git" }
+rocket_contrib = { git = "https://github.com/SergioBenitez/Rocket.git" }
 itertools = "0.8.0"
-askama = { version = "0.8.0", features = ["with-rocket"] }
+# askama = { version = "0.8.0", features = ["with-rocket"] }

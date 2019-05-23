@@ -6,6 +6,6 @@ edition = "2018"
 
 [dependencies]
 log = "0.4.1"
-dotenv = "0.13.0"
+dotenv = "0.14.1"
 mpd = "0.0.12"
 romanize = { git = "https://github.com/Bobo1239/romanize.git" }

@@ -5,7 +5,7 @@ extern crate rocket;
 
 use std::sync::Mutex;
 
-use askama::Template;
+// use askama::Template;
 use itertools::izip;
 use rocket::State;
 use rocket_contrib::serve::StaticFiles;
@@ -18,7 +18,7 @@ pub fn launch(config: &Config) {
     rocket::ignite()
         .manage(Mutex::new(MpdClient::connect(config.mpd_address).unwrap()))
         .manage(Romanizer::new().unwrap())
-        .mount("/", routes![index, next, test])
+        .mount("/", routes![index, next]) // test
         .mount("/", StaticFiles::from(concat!(env!("CARGO_MANIFEST_DIR"), "/static")))
         .launch();
 }
@@ -55,13 +55,13 @@ fn next(mpd: State<Mutex<MpdClient>>) -> &str {
     "Skipped"
 }
 
-#[get("/play")]
-fn test() -> PlayTemplate<'static> {
-    PlayTemplate { name: "testing" }
-}
+// #[get("/play")]
+// fn test() -> PlayTemplate<'static> {
+//     PlayTemplate { name: "testing" }
+// }
 
-#[derive(Template)]
-#[template(path = "index.html")]
-struct PlayTemplate<'a> {
-    name: &'a str,
-}
+// #[derive(Template)]
+// #[template(path = "index.html")]
+// struct PlayTemplate<'a> {
+//     name: &'a str,
+// }
