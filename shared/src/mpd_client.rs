@@ -36,4 +36,12 @@ impl MpdClient {
     pub fn queue(&mut self) -> Result<Vec<Song>, Error> {
         self.do_op(Client::queue)
     }
+
+    // TODO
+    pub fn switch(&mut self, queue_id: u32) -> Result<(), Error> {
+        if self.0.ping().is_err() || self.0.ping().is_err() {
+            self.0 = Client::connect(&self.1).unwrap();
+        }
+        self.0.switch(queue_id)
+    }
 }

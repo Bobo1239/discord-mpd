@@ -65,6 +65,25 @@ impl EventHandler for Handler {
                     mpd.prev().unwrap();
                     None
                 }
+                Some(&"play") => {
+                    match arguments.get(2).and_then(|queue_id| queue_id.parse().ok()) {
+                        Some(queue_id) => match mpd.switch(queue_id) {
+                            Ok(_) => Some(format!(
+                                "Playing \"{}\" now.",
+                                mpd.current_song()
+                                    .unwrap()
+                                    .unwrap()
+                                    .title
+                                    .unwrap_or("???".to_string())
+                            )),
+                            Err(e) => {
+                                error!("{:?}", e);
+                                Some(format!("Failed to play {}!", queue_id))
+                            }
+                        },
+                        None => Some("Missing or failed to parse song id".to_string()),
+                    }
+                }
                 Some(&"vol") => {
                     // TODO: rework using a proxy struct wrapping the PCM stream so we can adjust the volume
                     Some("TODO".to_string())

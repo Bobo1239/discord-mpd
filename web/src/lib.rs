@@ -19,7 +19,10 @@ pub fn launch(config: &Config) {
         .manage(Mutex::new(MpdClient::connect(config.mpd_address).unwrap()))
         .manage(Romanizer::new().unwrap())
         .mount("/", routes![index, next]) // test
-        .mount("/", StaticFiles::from(concat!(env!("CARGO_MANIFEST_DIR"), "/static")))
+        .mount(
+            "/",
+            StaticFiles::from(concat!(env!("CARGO_MANIFEST_DIR"), "/static")),
+        )
         .launch();
 }
 
@@ -43,7 +46,14 @@ fn index(mpd: State<Mutex<MpdClient>>, romanizer: State<Romanizer>) -> String {
     assert_eq!(songs.len(), romanized_titles.len());
     let mut output = String::new();
     for (song, title, romanized) in izip!(songs, titles, romanized_titles) {
-        output += &format!("{} {}   |  {}\n", song.place.unwrap().id, title, romanized,);
+        output += &format!(
+            "{:04}: {} - {} - {} ({})\n",
+            song.place.unwrap().pos,
+            song.tags.get("Artist").unwrap_or(&"unknown".to_string()),
+            song.tags.get("Album").unwrap_or(&"unknown".to_string()),
+            title,
+            romanized.trim(), // TODO: why is there sometimes whitespace at the front?
+        );
     }
     output
 }

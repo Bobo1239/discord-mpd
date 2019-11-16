@@ -14,7 +14,10 @@ crossbeam-utils = "0.6.3"
 
 # Enable optimization of dependencies even when using a non-release build as
 # igo-rs (from romanize) overflows the stack otherwise.
-[profile.dev.overrides."*"]
+[profile.dev.package."*"]
 opt-level = 3
+
+[patch.crates-io]
+"cookie" = { git = "https://github.com/SergioBenitez/cookie-rs.git" }
 
 [workspace]
