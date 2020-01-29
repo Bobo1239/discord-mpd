@@ -5,7 +5,6 @@ extern crate rocket;
 
 use std::sync::Mutex;
 
-// use askama::Template;
 use itertools::izip;
 use rocket::State;
 use rocket_contrib::serve::StaticFiles;
@@ -64,14 +63,3 @@ fn next(mpd: State<Mutex<MpdClient>>) -> &str {
     mpd.next().unwrap();
     "Skipped"
 }
-
-// #[get("/play")]
-// fn test() -> PlayTemplate<'static> {
-//     PlayTemplate { name: "testing" }
-// }
-
-// #[derive(Template)]
-// #[template(path = "index.html")]
-// struct PlayTemplate<'a> {
-//     name: &'a str,
-// }
