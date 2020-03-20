@@ -3,6 +3,7 @@ use std::env;
 use std::net::SocketAddr;
 use std::net::ToSocketAddrs;
 
+#[derive(Clone)]
 pub struct Config {
     pub mpd_address: SocketAddr,
     pub discord_token: String,

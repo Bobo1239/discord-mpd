@@ -6,5 +6,6 @@ edition = "2018"
 
 [dependencies]
 shared = { path = "../shared" }
-serenity = { version = "0.8.0", features = ["voice"] }
+serenity = { git = "https://github.com/Lakelezz/serenity.git", branch = "await", features = ["voice"] }
 env_logger = "0.7.0"
+tokio = { version = "0.2.13", features = ["macros"] }

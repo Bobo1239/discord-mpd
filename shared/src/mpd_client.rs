@@ -21,6 +21,7 @@ impl MpdClient {
         self.do_op(Client::toggle_pause)
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Result<(), Error> {
         self.do_op(Client::next)
     }

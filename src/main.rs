@@ -1,21 +1,19 @@
-use crossbeam_utils::thread;
-
 use shared::config::Config;
 use shared::dotenv::dotenv;
 
 // TODO: error handling...
 
-fn main() {
+#[tokio::main]
+async fn main() {
     dotenv().ok();
     let config = Config::from_env();
 
-    thread::scope(|scope| {
-        scope.spawn(|_| {
-            web::launch(&config);
-        });
-        scope.spawn(|_| {
-            discord::launch(&config);
-        });
-    })
-    .unwrap();
+    // TODO: Make launch `Send` and spawn it normally (and disable the `rt-utils` tokio feature)
+    let local = tokio::task::LocalSet::new();
+    local.spawn_local(discord::launch(config.clone()));
+
+    std::thread::spawn(|| {
+        web::launch(config);
+    });
+    local.await;
 }

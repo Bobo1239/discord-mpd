@@ -5,7 +5,7 @@ use std::sync::Arc;
 use serenity::client::bridge::voice::ClientVoiceManager;
 use serenity::model::prelude::*;
 use serenity::prelude::*;
-use serenity::voice;
+use serenity::{async_trait, voice};
 
 use shared::config::Config;
 use shared::helper::*;
@@ -16,17 +16,17 @@ use shared::romanize::Romanizer;
 
 const COMMAND_PREFIX: &str = "!r";
 
-pub fn launch(config: &Config) {
+pub async fn launch(config: Config) {
     let handler = Handler {
         mpd: Mutex::new(MpdClient::connect(config.mpd_address).unwrap()),
         romanizer: Romanizer::new().unwrap(),
     };
-    let mut client = Client::new(&config.discord_token, handler).unwrap();
+    let mut client = Client::new(&config.discord_token, handler).await.unwrap();
     {
-        let mut data = client.data.write();
+        let mut data = client.data.write().await;
         data.insert::<VoiceManager>(Arc::clone(&client.voice_manager));
     }
-    if let Err(err) = client.start() {
+    if let Err(err) = client.start().await {
         error!("[discord] client error: {:?}", err);
     }
 }
@@ -42,15 +42,16 @@ struct Handler {
     romanizer: Romanizer,
 }
 
+#[async_trait]
 impl EventHandler for Handler {
-    fn message(&self, ctx: Context, msg: Message) {
+    async fn message(&self, ctx: Context, msg: Message) {
         if msg.content.starts_with(COMMAND_PREFIX) {
             let arguments: Vec<&str> = msg.content.split(' ').collect();
             if arguments.get(0) != Some(&COMMAND_PREFIX) {
                 return;
             }
 
-            let mut mpd = self.mpd.lock();
+            let mut mpd = self.mpd.lock().await;
             let response = match arguments.get(1) {
                 // TODO: help
                 Some(&"pause") => {
@@ -74,7 +75,7 @@ impl EventHandler for Handler {
                                     .unwrap()
                                     .unwrap()
                                     .title
-                                    .unwrap_or("???".to_string())
+                                    .unwrap_or_else(|| "???".to_string())
                             )),
                             Err(e) => {
                                 error!("{:?}", e);
@@ -92,79 +93,78 @@ impl EventHandler for Handler {
                     Some(song) => format_mpd_songinfo(&song, &self.romanizer),
                     None => "Currently no song is playing!".to_string(),
                 }),
-                Some(&"quit") => {
-                    let result = msg
-                        .guild(&ctx.cache)
-                        .ok_or_else(|| "Groups and DMs not supported".to_string())
-                        .and_then(|guild| {
-                            let guild = guild.read();
-                            let manager_lock =
-                                ctx.data.read().get::<VoiceManager>().cloned().unwrap();
-                            let mut manager = manager_lock.lock();
+                Some(&"quit") => match msg.guild(&ctx.cache).await {
+                    None => Some("Groups and DMs not supported".to_string()),
+                    Some(guild) => {
+                        let guild = guild.read().await;
+                        let manager_lock = ctx
+                            .data
+                            .read()
+                            .await
+                            .get::<VoiceManager>()
+                            .cloned()
+                            .unwrap();
+                        let mut manager = manager_lock.lock().await;
 
-                            match manager.get(guild.id) {
-                                Some(_) => {
-                                    manager.remove(guild.id);
-                                    Ok(())
-                                }
-                                None => Err("Currently not in any channel!".to_string()),
+                        match manager.get(guild.id) {
+                            Some(_) => {
+                                manager.remove(guild.id);
+                                None
                             }
-                        });
-                    if let Err(msg) = result {
-                        Some(msg)
-                    } else {
-                        None
+                            None => Some("Currently not in any channel!".to_string()),
+                        }
                     }
-                }
+                },
                 None | Some(&"join") => {
-                    let result = msg
-                        .guild(&ctx.cache)
-                        .ok_or_else(|| "Groups and DMs not supported".to_string())
-                        .and_then(|guild| {
-                            let guild = guild.read();
-                            guild
+                    match msg.guild(&ctx.cache).await {
+                        None => Some("Groups and DMs not supported".to_string()),
+                        Some(guild) => {
+                            let guild = guild.read().await;
+                            match guild
                                 .voice_states
                                 .get(&msg.author.id)
                                 .and_then(|voice_state| voice_state.channel_id)
-                                .ok_or_else(|| "Not in a voice channel".to_string())
-                                .map(|channel_id| (guild.id, channel_id))
-                        })
-                        .and_then(|(guild_id, channel_id)| {
-                            let manager_lock =
-                                ctx.data.read().get::<VoiceManager>().cloned().unwrap();
-                            let mut manager = manager_lock.lock();
-                            // TODO: Make this configurable and also note that the sample
-                            //       rate should be 48kHz
-                            let fifo = File::open("/tmp/mpd_bot.fifo").unwrap();
-                            let reader = BufReader::new(fifo);
+                            {
+                                None => Some("Not in a voice channel".to_string()),
+                                Some(channel_id) => {
+                                    let manager_lock = ctx
+                                        .data
+                                        .read()
+                                        .await
+                                        .get::<VoiceManager>()
+                                        .cloned()
+                                        .unwrap();
+                                    let mut manager = manager_lock.lock().await;
+                                    // TODO: Make this configurable and also note that the sample
+                                    //       rate should be 48kHz
+                                    let fifo = File::open("/tmp/mpd_bot.fifo").unwrap();
+                                    let reader = BufReader::new(fifo);
 
-                            if manager.join(guild_id, channel_id).is_none() {
-                                Err("Error joining the channel".to_string())
-                            } else {
-                                manager
-                                    .get_mut(guild_id)
-                                    .unwrap()
-                                    .play(voice::pcm(true, reader));
-                                Ok(())
+                                    if manager.join(guild.id, channel_id).is_none() {
+                                        Some("Error joining the channel".to_string())
+                                    } else {
+                                        manager
+                                            .get_mut(guild.id)
+                                            .unwrap()
+                                            .play(voice::pcm(true, reader));
+                                        None
+                                    }
+                                }
                             }
-                        });
-                    if let Err(msg) = result {
-                        Some(msg)
-                    } else {
-                        None
+                        }
                     }
                 }
                 _ => Some("Unrecognized command... TODO: reference".to_string()),
             };
             if let Some(response) = response {
-                if let Err(err) = msg.channel_id.say(&ctx.http, response) {
+                if let Err(err) = msg.channel_id.say(&ctx.http, response).await {
                     error!("[discord] error sending message: {:?}", err);
                 }
             }
         }
     }
 
-    fn ready(&self, _: Context, ready: Ready) {
+    async fn ready(&self, _: Context, ready: Ready) {
         info!("[discord] {} is connected!", ready.user.name);
     }
 }

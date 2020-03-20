@@ -13,7 +13,7 @@ use shared::config::Config;
 use shared::mpd_client::MpdClient;
 use shared::romanize::Romanizer;
 
-pub fn launch(config: &Config) {
+pub fn launch(config: Config) {
     rocket::ignite()
         .manage(Mutex::new(MpdClient::connect(config.mpd_address).unwrap()))
         .manage(Romanizer::new().unwrap())
