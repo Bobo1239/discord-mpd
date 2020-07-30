@@ -1,11 +1,11 @@
-use std::fs::File;
-use std::io::BufReader;
 use std::sync::Arc;
 
 use serenity::client::bridge::voice::ClientVoiceManager;
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::{async_trait, voice};
+use tokio::fs::File;
+use tokio::io::BufReader;
 
 use shared::config::Config;
 use shared::helper::*;
@@ -21,7 +21,10 @@ pub async fn launch(config: Config) {
         mpd: Mutex::new(MpdClient::connect(config.mpd_address).unwrap()),
         romanizer: Romanizer::new().unwrap(),
     };
-    let mut client = Client::new(&config.discord_token, handler).await.unwrap();
+    let mut client = Client::new(&config.discord_token)
+        .event_handler(handler)
+        .await
+        .unwrap();
     {
         let mut data = client.data.write().await;
         data.insert::<VoiceManager>(Arc::clone(&client.voice_manager));
@@ -96,7 +99,6 @@ impl EventHandler for Handler {
                 Some(&"quit") => match msg.guild(&ctx.cache).await {
                     None => Some("Groups and DMs not supported".to_string()),
                     Some(guild) => {
-                        let guild = guild.read().await;
                         let manager_lock = ctx
                             .data
                             .read()
@@ -119,7 +121,6 @@ impl EventHandler for Handler {
                     match msg.guild(&ctx.cache).await {
                         None => Some("Groups and DMs not supported".to_string()),
                         Some(guild) => {
-                            let guild = guild.read().await;
                             match guild
                                 .voice_states
                                 .get(&msg.author.id)
@@ -137,7 +138,7 @@ impl EventHandler for Handler {
                                     let mut manager = manager_lock.lock().await;
                                     // TODO: Make this configurable and also note that the sample
                                     //       rate should be 48kHz
-                                    let fifo = File::open("/tmp/mpd_bot.fifo").unwrap();
+                                    let fifo = File::open("/tmp/mpd_bot.fifo").await.unwrap();
                                     let reader = BufReader::new(fifo);
 
                                     if manager.join(guild.id, channel_id).is_none() {

@@ -6,6 +6,6 @@ edition = "2018"
 
 [dependencies]
 shared = { path = "../shared" }
-serenity = { git = "https://github.com/Lakelezz/serenity.git", branch = "await", features = ["voice"] }
+serenity = { git = "https://github.com/acdenisSK/serenity.git", branch = "await_next", default-features = false, features = ["voice", "client", "cache", "model", "rustls_backend"] }
 env_logger = "0.7.0"
 tokio = { version = "0.2.13", features = ["macros"] }

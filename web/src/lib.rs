@@ -7,13 +7,14 @@ use std::sync::Mutex;
 
 use itertools::izip;
 use rocket::State;
+
 use rocket_contrib::serve::StaticFiles;
 
 use shared::config::Config;
 use shared::mpd_client::MpdClient;
 use shared::romanize::Romanizer;
 
-pub fn launch(config: Config) {
+pub async fn launch(config: Config) {
     rocket::ignite()
         .manage(Mutex::new(MpdClient::connect(config.mpd_address).unwrap()))
         .manage(Romanizer::new().unwrap())
@@ -22,7 +23,9 @@ pub fn launch(config: Config) {
             "/",
             StaticFiles::from(concat!(env!("CARGO_MANIFEST_DIR"), "/static")),
         )
-        .launch();
+        .launch()
+        .await
+        .unwrap()
 }
 
 #[get("/")]
@@ -39,7 +42,11 @@ fn index(mpd: State<Mutex<MpdClient>>, romanizer: State<Romanizer>) -> String {
         })
         .collect();
     let romanized_titles = romanizer.romanize(&titles.join("\n"));
-    let romanized_titles: Vec<_> = romanized_titles.split('\n').collect();
+    let romanized_titles = if !titles.is_empty() {
+        romanized_titles.split('\n').collect()
+    } else {
+        Vec::new()
+    };
 
     assert_eq!(songs.len(), titles.len());
     assert_eq!(songs.len(), romanized_titles.len());

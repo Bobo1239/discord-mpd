@@ -10,9 +10,9 @@ discord = { path = "discord" }
 web = { path = "web" }
 tokio = { version = "0.2.13", features = ["macros", "rt-threaded", "rt-util"] }
 
-# Enable optimization of dependencies even when using a non-release build as
-# igo-rs (from romanize) overflows the stack otherwise.
-[profile.dev.package."*"]
+# Enable optimizations for igo-rs (from romanize) even when using a non-release build as it
+# overflows the stack otherwise.
+[profile.dev.package.igo-rs]
 opt-level = 3
 
 [workspace]

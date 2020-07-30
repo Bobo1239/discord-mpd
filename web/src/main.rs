@@ -1,8 +1,9 @@
 use shared::config::Config;
 use shared::dotenv::dotenv;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     dotenv().ok();
     let config = Config::from_env();
-    web::launch(config);
+    web::launch(config).await;
 }
