@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use serenity::client::bridge::voice::ClientVoiceManager;
+use serenity::client::ClientBuilder;
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::{async_trait, voice};
@@ -21,7 +22,7 @@ pub async fn launch(config: Config) {
         mpd: Mutex::new(MpdClient::connect(config.mpd_address).unwrap()),
         romanizer: Romanizer::new().unwrap(),
     };
-    let mut client = Client::new(&config.discord_token)
+    let mut client = ClientBuilder::new(&config.discord_token)
         .event_handler(handler)
         .await
         .unwrap();
