@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 shared = { path = "../shared" }
-rocket = { git = "https://github.com/SergioBenitez/Rocket.git" }
-rocket_contrib = { git = "https://github.com/SergioBenitez/Rocket.git" }
-itertools = "0.9.0"
-tokio = { version = "0.2.13", features = ["macros"] }
+rocket = { git = "https://github.com/SergioBenitez/Rocket.git", default-features = false }
+rocket_contrib = { git = "https://github.com/SergioBenitez/Rocket.git", default-features = false, features = ["serve"] }
+itertools = "0.10.0"
+tokio = { version = "1.2.0", features = ["full"] }

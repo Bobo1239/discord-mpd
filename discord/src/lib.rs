@@ -1,12 +1,14 @@
-use std::sync::Arc;
+use std::fs::File;
+use std::io::BufReader;
 
-use serenity::client::bridge::voice::ClientVoiceManager;
+use serenity::async_trait;
 use serenity::client::ClientBuilder;
 use serenity::model::prelude::*;
 use serenity::prelude::*;
-use serenity::{async_trait, voice};
-use tokio::fs::File;
-use tokio::io::BufReader;
+use songbird::input::reader::Reader;
+use songbird::input::Input;
+use songbird::input::codec::Codec;
+use songbird::SerenityInit;
 
 use shared::config::Config;
 use shared::helper::*;
@@ -24,21 +26,13 @@ pub async fn launch(config: Config) {
     };
     let mut client = ClientBuilder::new(&config.discord_token)
         .event_handler(handler)
+        .register_songbird()
         .await
         .unwrap();
-    {
-        let mut data = client.data.write().await;
-        data.insert::<VoiceManager>(Arc::clone(&client.voice_manager));
-    }
+
     if let Err(err) = client.start().await {
         error!("[discord] client error: {:?}", err);
     }
-}
-
-struct VoiceManager;
-
-impl TypeMapKey for VoiceManager {
-    type Value = Arc<Mutex<ClientVoiceManager>>;
 }
 
 struct Handler {
@@ -100,18 +94,10 @@ impl EventHandler for Handler {
                 Some(&"quit") => match msg.guild(&ctx.cache).await {
                     None => Some("Groups and DMs not supported".to_string()),
                     Some(guild) => {
-                        let manager_lock = ctx
-                            .data
-                            .read()
-                            .await
-                            .get::<VoiceManager>()
-                            .cloned()
-                            .unwrap();
-                        let mut manager = manager_lock.lock().await;
-
+                        let manager = songbird::get(&ctx).await.unwrap();
                         match manager.get(guild.id) {
                             Some(_) => {
-                                manager.remove(guild.id);
+                                manager.remove(guild.id).await.unwrap();
                                 None
                             }
                             None => Some("Currently not in any channel!".to_string()),
@@ -129,27 +115,26 @@ impl EventHandler for Handler {
                             {
                                 None => Some("Not in a voice channel".to_string()),
                                 Some(channel_id) => {
-                                    let manager_lock = ctx
-                                        .data
-                                        .read()
-                                        .await
-                                        .get::<VoiceManager>()
-                                        .cloned()
-                                        .unwrap();
-                                    let mut manager = manager_lock.lock().await;
-                                    // TODO: Make this configurable and also note that the sample
-                                    //       rate should be 48kHz
-                                    let fifo = File::open("/tmp/mpd_bot.fifo").await.unwrap();
-                                    let reader = BufReader::new(fifo);
+                                    let manager = songbird::get(&ctx).await.unwrap();
+                                    match manager.join(guild.id, channel_id).await {
+                                        (_, Err(_)) => {
+                                            Some("Error joining the channel".to_string())
+                                        }
+                                        (call, Ok(_)) => {
+                                            // TODO: Make this configurable and also note that the sample
+                                            //       rate should be 48kHz
+                                            let fifo = File::open("/tmp/mpd_bot.fifo").unwrap();
+                                            let reader = BufReader::new(fifo);
 
-                                    if manager.join(guild.id, channel_id).is_none() {
-                                        Some("Error joining the channel".to_string())
-                                    } else {
-                                        manager
-                                            .get_mut(guild.id)
-                                            .unwrap()
-                                            .play(voice::pcm(true, reader));
-                                        None
+                                            let mut source = Input::float_pcm(
+                                                true,
+                                                Reader::File(reader),
+                                            );
+                                            source.kind = Codec::Pcm;
+
+                                            call.lock().await.play_source(source);
+                                            None
+                                        }
                                     }
                                 }
                             }
