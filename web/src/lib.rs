@@ -1,5 +1,3 @@
-#![feature(proc_macro_hygiene, decl_macro)]
-
 #[macro_use]
 extern crate rocket;
 
@@ -7,21 +5,20 @@ use std::sync::Mutex;
 
 use itertools::izip;
 use rocket::State;
-
-use rocket_contrib::serve::StaticFiles;
+use rocket::fs::FileServer;
 
 use shared::config::Config;
 use shared::mpd_client::MpdClient;
 use shared::romanize::Romanizer;
 
 pub async fn launch(config: Config) {
-    rocket::ignite()
+    rocket::build()
         .manage(Mutex::new(MpdClient::connect(config.mpd_address).unwrap()))
         .manage(Romanizer::new().unwrap())
         .mount("/", routes![index, next]) // test
         .mount(
             "/",
-            StaticFiles::from(concat!(env!("CARGO_MANIFEST_DIR"), "/static")),
+            FileServer::from(concat!(env!("CARGO_MANIFEST_DIR"), "/static")),
         )
         .launch()
         .await
@@ -29,7 +26,7 @@ pub async fn launch(config: Config) {
 }
 
 #[get("/")]
-fn index(mpd: State<Mutex<MpdClient>>, romanizer: State<Romanizer>) -> String {
+fn index(mpd: &State<Mutex<MpdClient>>, romanizer: &State<Romanizer>) -> String {
     let songs = mpd.lock().unwrap().queue().unwrap();
 
     let titles: Vec<_> = songs
@@ -65,7 +62,7 @@ fn index(mpd: State<Mutex<MpdClient>>, romanizer: State<Romanizer>) -> String {
 }
 
 #[get("/next")]
-fn next(mpd: State<Mutex<MpdClient>>) -> &str {
+fn next(mpd: &State<Mutex<MpdClient>>) -> &str {
     let mut mpd = mpd.lock().unwrap();
     mpd.next().unwrap();
     "Skipped"
