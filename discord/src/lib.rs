@@ -1,13 +1,12 @@
 use std::fs::File;
-use std::io::BufReader;
 
 use serenity::async_trait;
 use serenity::client::ClientBuilder;
 use serenity::model::prelude::*;
 use serenity::prelude::*;
+use songbird::input::codec::Codec;
 use songbird::input::reader::Reader;
 use songbird::input::Input;
-use songbird::input::codec::Codec;
 use songbird::SerenityInit;
 
 use shared::config::Config;
@@ -124,12 +123,8 @@ impl EventHandler for Handler {
                                             // TODO: Make this configurable and also note that the sample
                                             //       rate should be 48kHz
                                             let fifo = File::open("/tmp/mpd_bot.fifo").unwrap();
-                                            let reader = BufReader::new(fifo);
-
-                                            let mut source = Input::float_pcm(
-                                                true,
-                                                Reader::File(reader),
-                                            );
+                                            let mut source =
+                                                Input::float_pcm(true, Reader::from_file(fifo));
                                             source.kind = Codec::Pcm;
 
                                             call.lock().await.play_source(source);

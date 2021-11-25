@@ -4,8 +4,8 @@ extern crate rocket;
 use std::sync::Mutex;
 
 use itertools::izip;
-use rocket::State;
 use rocket::fs::FileServer;
+use rocket::State;
 
 use shared::config::Config;
 use shared::mpd_client::MpdClient;
