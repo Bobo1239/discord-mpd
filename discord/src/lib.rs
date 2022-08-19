@@ -2,6 +2,7 @@ use std::fs::File;
 
 use serenity::async_trait;
 use serenity::client::ClientBuilder;
+use serenity::model::gateway::GatewayIntents;
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use songbird::input::codec::Codec;
@@ -23,11 +24,14 @@ pub async fn launch(config: Config) {
         mpd: Mutex::new(MpdClient::connect(config.mpd_address).unwrap()),
         romanizer: Romanizer::new().unwrap(),
     };
-    let mut client = ClientBuilder::new(&config.discord_token)
-        .event_handler(handler)
-        .register_songbird()
-        .await
-        .unwrap();
+    let mut client = ClientBuilder::new(
+        &config.discord_token,
+        GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT,
+    )
+    .event_handler(handler)
+    .register_songbird()
+    .await
+    .unwrap();
 
     if let Err(err) = client.start().await {
         error!("[discord] client error: {:?}", err);
@@ -90,7 +94,7 @@ impl EventHandler for Handler {
                     Some(song) => format_mpd_songinfo(&song, &self.romanizer),
                     None => "Currently no song is playing!".to_string(),
                 }),
-                Some(&"quit") => match msg.guild(&ctx.cache).await {
+                Some(&"quit") => match msg.guild(&ctx.cache) {
                     None => Some("Groups and DMs not supported".to_string()),
                     Some(guild) => {
                         let manager = songbird::get(&ctx).await.unwrap();
@@ -104,7 +108,7 @@ impl EventHandler for Handler {
                     }
                 },
                 None | Some(&"join") => {
-                    match msg.guild(&ctx.cache).await {
+                    match msg.guild(&ctx.cache) {
                         None => Some("Groups and DMs not supported".to_string()),
                         Some(guild) => {
                             match guild

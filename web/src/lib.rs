@@ -22,7 +22,7 @@ pub async fn launch(config: Config) {
         )
         .launch()
         .await
-        .unwrap()
+        .unwrap();
 }
 
 #[get("/")]
