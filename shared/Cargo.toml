@@ -7,5 +7,5 @@ edition = "2021"
 [dependencies]
 log = "0.4.1"
 dotenv = "0.15.0"
-mpd = "0.0.12"
+mpd = { git = "https://github.com/kstep/rust-mpd.git" } # Last release was ages ago...
 romanize = { git = "https://github.com/Bobo1239/romanize.git" }

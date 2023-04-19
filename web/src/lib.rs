@@ -52,8 +52,11 @@ fn index(mpd: &State<Mutex<MpdClient>>, romanizer: &State<Romanizer>) -> String 
         output += &format!(
             "{:04}: {} - {} - {} ({})\n",
             song.place.unwrap().pos,
-            song.tags.get("Artist").unwrap_or(&"unknown".to_string()),
-            song.tags.get("Album").unwrap_or(&"unknown".to_string()),
+            song.artist.unwrap_or("unknown".to_string()),
+            song.tags
+                .iter()
+                .find_map(|(tag, value)| if tag == "Album" { Some(value) } else { None })
+                .unwrap_or(&"unknown".to_string()),
             title,
             romanized.trim(), // TODO: why is there sometimes whitespace at the front?
         );

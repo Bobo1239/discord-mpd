@@ -48,7 +48,7 @@ impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
         if msg.content.starts_with(COMMAND_PREFIX) {
             let arguments: Vec<&str> = msg.content.split(' ').collect();
-            if arguments.get(0) != Some(&COMMAND_PREFIX) {
+            if arguments.first() != Some(&COMMAND_PREFIX) {
                 return;
             }
 
@@ -172,13 +172,16 @@ fn format_mpd_songinfo(song: &Song, romanizer: &Romanizer) -> String {
         song.file.clone()
     };
     let artist = song
-        .tags
-        .get("Artist")
-        .map(|s| add_romanization(s.clone(), romanizer));
-    let album = song
-        .tags
-        .get("Album")
-        .map(|s| add_romanization(s.clone(), romanizer));
+        .artist
+        .as_ref()
+        .map(|a| add_romanization(a.clone(), romanizer));
+    let album = song.tags.iter().find_map(|(tag, value)| {
+        if tag == "Album" {
+            Some(add_romanization(value.clone(), romanizer))
+        } else {
+            None
+        }
+    });
 
     info += &format!("Title:    {}\n", title,);
     if let Some(artist) = artist {
@@ -188,10 +191,7 @@ fn format_mpd_songinfo(song: &Song, romanizer: &Romanizer) -> String {
         info += &format!("Album:    {}\n", album)
     }
     if let Some(duration) = song.duration {
-        info += &format!(
-            "Duration: {}\n",
-            format_duration(&duration.to_std().unwrap())
-        );
+        info += &format!("Duration: {}\n", format_duration(&duration));
     }
 
     info += "```";

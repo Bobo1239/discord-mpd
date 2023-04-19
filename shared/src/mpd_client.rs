@@ -7,12 +7,12 @@ pub struct MpdClient(Client, SocketAddr);
 
 impl MpdClient {
     pub fn connect(address: SocketAddr) -> Result<MpdClient, Error> {
-        Ok(MpdClient(Client::connect(&address)?, address))
+        Ok(MpdClient(Client::connect(address)?, address))
     }
 
     fn do_op<T, F: Fn(&mut Client) -> Result<T, Error>>(&mut self, f: F) -> Result<T, Error> {
         if self.0.ping().is_err() || self.0.ping().is_err() {
-            self.0 = Client::connect(&self.1).unwrap();
+            self.0 = Client::connect(self.1).unwrap();
         }
         f(&mut self.0)
     }
@@ -41,7 +41,7 @@ impl MpdClient {
     // TODO
     pub fn switch(&mut self, queue_id: u32) -> Result<(), Error> {
         if self.0.ping().is_err() || self.0.ping().is_err() {
-            self.0 = Client::connect(&self.1).unwrap();
+            self.0 = Client::connect(self.1).unwrap();
         }
         self.0.switch(queue_id)
     }
