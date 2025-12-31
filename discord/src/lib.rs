@@ -5,9 +5,7 @@ use serenity::client::ClientBuilder;
 use serenity::model::gateway::GatewayIntents;
 use serenity::model::prelude::*;
 use serenity::prelude::*;
-use songbird::input::codec::Codec;
-use songbird::input::reader::Reader;
-use songbird::input::Input;
+use songbird::input::RawAdapter;
 use songbird::SerenityInit;
 
 use shared::config::Config;
@@ -53,94 +51,95 @@ impl EventHandler for Handler {
             }
 
             let mut mpd = self.mpd.lock().await;
-            let response = match arguments.get(1) {
-                // TODO: help
-                Some(&"pause") => {
-                    mpd.toggle_pause().unwrap();
-                    None
-                }
-                Some(&"next") => {
-                    mpd.next().unwrap();
-                    None
-                }
-                Some(&"prev") => {
-                    mpd.prev().unwrap();
-                    None
-                }
-                Some(&"play") => {
-                    match arguments.get(2).and_then(|queue_id| queue_id.parse().ok()) {
-                        Some(queue_id) => match mpd.switch(queue_id) {
-                            Ok(_) => Some(format!(
-                                "Playing \"{}\" now.",
-                                mpd.current_song()
-                                    .unwrap()
-                                    .unwrap()
-                                    .title
-                                    .unwrap_or_else(|| "???".to_string())
-                            )),
-                            Err(e) => {
-                                error!("{:?}", e);
-                                Some(format!("Failed to play {}!", queue_id))
-                            }
-                        },
-                        None => Some("Missing or failed to parse song id".to_string()),
+            // TODO: Probably migrate to serenity proc-macro based commands...
+            let response = 'response: {
+                match arguments.get(1) {
+                    // TODO: help
+                    Some(&"pause") => {
+                        mpd.toggle_pause().unwrap();
+                        None
                     }
-                }
-                Some(&"vol") => {
-                    // TODO: rework using a proxy struct wrapping the PCM stream so we can adjust the volume
-                    Some("TODO".to_string())
-                }
-                Some(&"info") => Some(match mpd.current_song().unwrap() {
-                    Some(song) => format_mpd_songinfo(&song, &self.romanizer),
-                    None => "Currently no song is playing!".to_string(),
-                }),
-                Some(&"quit") => match msg.guild(&ctx.cache) {
-                    None => Some("Groups and DMs not supported".to_string()),
-                    Some(guild) => {
-                        let manager = songbird::get(&ctx).await.unwrap();
-                        match manager.get(guild.id) {
-                            Some(_) => {
-                                manager.remove(guild.id).await.unwrap();
-                                None
-                            }
-                            None => Some("Currently not in any channel!".to_string()),
+                    Some(&"next") => {
+                        mpd.next().unwrap();
+                        None
+                    }
+                    Some(&"prev") => {
+                        mpd.prev().unwrap();
+                        None
+                    }
+                    Some(&"play") => {
+                        match arguments.get(2).and_then(|queue_id| queue_id.parse().ok()) {
+                            Some(queue_id) => match mpd.switch(queue_id) {
+                                Ok(_) => Some(format!(
+                                    "Playing \"{}\" now.",
+                                    mpd.current_song()
+                                        .unwrap()
+                                        .unwrap()
+                                        .title
+                                        .unwrap_or_else(|| "???".to_string())
+                                )),
+                                Err(e) => {
+                                    error!("{:?}", e);
+                                    Some(format!("Failed to play {}!", queue_id))
+                                }
+                            },
+                            None => Some("Missing or failed to parse song id".to_string()),
                         }
                     }
-                },
-                None | Some(&"join") => {
-                    match msg.guild(&ctx.cache) {
+                    Some(&"vol") => {
+                        // TODO: rework using a proxy struct wrapping the PCM stream so we can adjust the volume
+                        Some("TODO".to_string())
+                    }
+                    Some(&"info") => Some(match mpd.current_song().unwrap() {
+                        Some(song) => format_mpd_songinfo(&song, &self.romanizer),
+                        None => "Currently no song is playing!".to_string(),
+                    }),
+                    Some(&"quit") => match msg.guild(&ctx.cache).map(|g| g.id) {
                         None => Some("Groups and DMs not supported".to_string()),
-                        Some(guild) => {
-                            match guild
-                                .voice_states
-                                .get(&msg.author.id)
-                                .and_then(|voice_state| voice_state.channel_id)
-                            {
-                                None => Some("Not in a voice channel".to_string()),
-                                Some(channel_id) => {
-                                    let manager = songbird::get(&ctx).await.unwrap();
-                                    match manager.join(guild.id, channel_id).await {
-                                        (_, Err(_)) => {
-                                            Some("Error joining the channel".to_string())
-                                        }
-                                        (call, Ok(_)) => {
-                                            // TODO: Make this configurable and also note that the sample
-                                            //       rate should be 48kHz
-                                            let fifo = File::open("/tmp/mpd_bot.fifo").unwrap();
-                                            let mut source =
-                                                Input::float_pcm(true, Reader::from_file(fifo));
-                                            source.kind = Codec::Pcm;
-
-                                            call.lock().await.play_source(source);
-                                            None
-                                        }
+                        Some(guild_id) => {
+                            let manager = songbird::get(&ctx).await.unwrap().clone();
+                            match manager.get(guild_id) {
+                                Some(_) => {
+                                    manager.remove(guild_id).await.unwrap();
+                                    None
+                                }
+                                None => Some("Currently not in any channel!".to_string()),
+                            }
+                        }
+                    },
+                    None | Some(&"join") => {
+                        let manager = songbird::get(&ctx).await.unwrap().clone();
+                        let (guild_id, channel_id) = match msg.guild(&ctx.cache) {
+                            None => {
+                                break 'response Some("Groups and DMs not supported".to_string())
+                            }
+                            Some(guild) => {
+                                let channel_id = guild
+                                    .voice_states
+                                    .get(&msg.author.id)
+                                    .and_then(|voice_state| voice_state.channel_id);
+                                let guild_id = guild.id;
+                                match channel_id {
+                                    None => {
+                                        break 'response Some("Not in a voice channel".to_string())
                                     }
+                                    Some(channel_id) => (guild_id, channel_id),
                                 }
                             }
+                        };
+
+                        match manager.join(guild_id, channel_id).await {
+                            Err(err) => Some(format!("Error joining the channel: {}", err)),
+                            Ok(call) => {
+                                let fifo = File::open("/tmp/mpd_bot.fifo").unwrap();
+                                let raw_stream = RawAdapter::new(fifo, 48000, 2);
+                                call.lock().await.play_only_input(raw_stream.into());
+                                None
+                            }
                         }
                     }
+                    _ => Some("Unrecognized command... TODO: reference".to_string()),
                 }
-                _ => Some("Unrecognized command... TODO: reference".to_string()),
             };
             if let Some(response) = response {
                 if let Err(err) = msg.channel_id.say(&ctx.http, response).await {
