@@ -6,6 +6,6 @@ edition = "2021"
 
 [dependencies]
 shared = { path = "../shared" }
-rocket = { git = "https://github.com/SergioBenitez/Rocket.git", default-features = false }
-itertools = "0.10.0"
+rocket = { version = "0.5.0", default-features = false }
+itertools = "0.14.0"
 tokio = { version = "1.2.0", features = ["full"] }
